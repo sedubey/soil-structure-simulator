@@ -13,9 +13,9 @@ public class RetainingController : MonoBehaviour
     public Transform wood5;
 
     [Header("Movement")]
-    public float beamDropDist = 5f;
-    public float woodDropDist = 1f;
-    public float moveSpeed = 2f;
+    public float beamDropDist = 5f;             // How far beams drop
+    public float woodDropDist = 1f;             // How far wood walls drop
+    public float moveSpeed = 2f;                // How fast
 
     private int curr = 0;                       // Current step
 
@@ -28,6 +28,7 @@ public class RetainingController : MonoBehaviour
 
     void Start()
     {
+        // Calculate where the beams/walls will drop down to (how far)
         beamsTarget = beams.position + Vector3.down * beamDropDist;
 
         wood1Target = wood1.position + Vector3.down * woodDropDist;
@@ -36,6 +37,7 @@ public class RetainingController : MonoBehaviour
         wood4Target = wood4.position + Vector3.down * woodDropDist;
         wood5Target = wood5.position + Vector3.down * woodDropDist;
 
+        // Make sure everything is hidden at start
         SetVisible(beams, false);
         SetVisible(wood1, false);
         SetVisible(wood2, false);
@@ -46,6 +48,7 @@ public class RetainingController : MonoBehaviour
 
     void Update()
     {
+        // When space is pressed, go to next step
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
             curr++;
@@ -58,23 +61,23 @@ public class RetainingController : MonoBehaviour
         switch (curr)
         {
             case 1:
-                RemoveByTag("DigSteel");
+                RemoveByTag("DigSteel");    // Delete the soil where steel will be placed
                 break;
 
             case 2:
-                StartCoroutine(Move(beams, beamsTarget));
+                StartCoroutine(Move(beams, beamsTarget));   // Move beams into place
                 break;
 
             case 3:
-                RemoveByTag("Dig1");
+                RemoveByTag("Dig1");    // Delete first layer of soil for walls
                 break;
 
             case 4:
-                StartCoroutine(Move(wood1, wood1Target));
+                StartCoroutine(Move(wood1, wood1Target));   // Move first layer of walls into place
                 break;
 
             case 5:
-                RemoveByTag("Dig2");
+                RemoveByTag("Dig2");    // Repeated
                 break;
 
             case 6:
@@ -110,7 +113,7 @@ public class RetainingController : MonoBehaviour
         }
     }
 
-    void RemoveByTag(string tagName)        // Hide my objects
+    void RemoveByTag(string tagName)        // Hide my objects based on tag
     {
         GameObject[] blocks = GameObject.FindGameObjectsWithTag(tagName);
 
@@ -126,12 +129,7 @@ public class RetainingController : MonoBehaviour
 
         while (Vector3.Distance(obj.position, target) > 0.01f)
         {
-            obj.position = Vector3.MoveTowards(
-                obj.position,
-                target,
-                moveSpeed * Time.deltaTime
-            );
-
+            obj.position = Vector3.MoveTowards(obj.position, target, moveSpeed * Time.deltaTime);
             yield return null;
         }
     }

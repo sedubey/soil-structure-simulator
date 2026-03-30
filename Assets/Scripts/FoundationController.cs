@@ -16,7 +16,7 @@ public class FoundationController : MonoBehaviour
     public double Cu = 40.0;
     public double Sc = 1.3;
 
-    public double Qu = 500;   //ShallowFoundation.BearingCapacity(deg, c, q, y, b);
+    public double Qu = 500;   // Set high for failure testing
 
     void Start()
     {
@@ -25,7 +25,7 @@ public class FoundationController : MonoBehaviour
         // Hide Scenario specific sand
         Scenario_1.SetActive(false);
 
-        if (q > Qu) // Failure Scenario 1
+        if (q > Qu) // Failure
         {
             // Scale and move middle sand
             Sand_M.transform.position += new Vector3(0f, -0.1f, 0f);

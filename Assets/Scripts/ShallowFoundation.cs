@@ -2,7 +2,7 @@ using System;
 
 public class ShallowFoundation
 {
-    public static double[,] Terzaghi =
+    public static double[,] Terzaghi =  // Table of values for different degrees
     {
         {0, 5.70, 1.00, 0.00},
         {10, 9.61, 2.69, 0.56},
@@ -26,14 +26,11 @@ public class ShallowFoundation
         {46, 196.22, 204.19, 407.11}
     };
 
-    //double ScSquare = 1.3, SySquare = 0.8;
-    //double ScCirc = 1.3, SyCirc = 0.6;
-
     public static bool GetNum(int deg, out double Nc, out double Nq, out double Ny)   // Assigns Nc, Nq, Ny based off degree
     {
-        for (int i = 0; i < Terzaghi.GetLength(0); i++)
+        for (int i = 0; i < Terzaghi.GetLength(0); i++) // Loop through table
         {
-            if (deg == (int)Terzaghi[i, 0])
+            if (deg == (int)Terzaghi[i, 0]) // Find degree, assign values
             {
                 Nc = Terzaghi[i, 1];
                 Nq = Terzaghi[i, 2];
@@ -42,7 +39,7 @@ public class ShallowFoundation
             }
         }
 
-        Nc = 0; Nq = 0; Ny = 0;
+        Nc = 0; Nq = 0; Ny = 0; // Otherwise
         return false;
     }
 
@@ -69,7 +66,7 @@ public class ShallowFoundation
 
         double Sy;
 
-        if (isSquare)
+        if (isSquare)   // Sy is different based on shape
             Sy = 0.6;
         else
             Sy = 0.8;
@@ -82,38 +79,3 @@ public class ShallowFoundation
         return (5.7 * Cu * Sc) + q; // Square/Circle equation
     }
 }
-
-/*class Program
-{
-    static void Main()
-    {
-        int deg = 26;
-
-        double c = 0.0;
-        double y = 19.0;
-        double b = 2.0;
-        double q = 21.0;
-        double Cu = 40.0;
-        double Sc = 1.3;
-        double Sy = 0.8;
-
-        Console.WriteLine($"Degree: {deg}");
-        ShallowFoundation.GetNum(deg, out double Nc, out double Nq, out double Ny);
-        Console.WriteLine($"Nc = {Nc}");
-        Console.WriteLine($"Nq = {Nq}");
-        Console.WriteLine($"Ny = {Ny}");
-
-        Double QuBC = ShallowFoundation.BearingCapacity(deg, c, q, y, b);
-        Double QuSD = ShallowFoundation.StripFootingDrained(deg, c, q, y, b);
-        Double QuSUD = ShallowFoundation.StripFootingUndrained(Cu, q);
-        Double QuCD = ShallowFoundation.SquareFootingDrained(deg, c, Sc, q, y, b, Sy);
-        Double QuCUD = ShallowFoundation.SquareFootingUndrained(Cu, Sc, q);
-
-        Console.WriteLine($"Bearing Capacity: {QuBC}");
-        Console.WriteLine($"Strip Footing (Drained): {QuSD}");
-        Console.WriteLine($"Strip Footing (Undrained): {QuSUD}");
-        Console.WriteLine($"Square Footing (Drained): {QuCD}");
-        Console.WriteLine($"Square Footing (Undrained): {QuCUD}");
-    }
-}
-//Console.WriteLine($"Result: {result}"); */
