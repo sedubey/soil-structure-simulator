@@ -62,49 +62,46 @@ public class RetainingController : MonoBehaviour
         {
             case 1:
                 RemoveByTag("DigSteel");    // Delete the soil where steel will be placed
-                break;
-
-            case 2:
                 StartCoroutine(Move(beams, beamsTarget));   // Move beams into place
                 break;
 
-            case 3:
+            case 2:
                 RemoveByTag("Dig1");    // Delete first layer of soil for walls
                 break;
 
-            case 4:
+            case 3:
                 StartCoroutine(Move(wood1, wood1Target));   // Move first layer of walls into place
                 break;
 
-            case 5:
+            case 4:
                 RemoveByTag("Dig2");    // Repeated
                 break;
 
-            case 6:
+            case 5:
                 StartCoroutine(Move(wood2, wood2Target));
                 break;
 
-            case 7:
+            case 6:
                 RemoveByTag("Dig3");
                 break;
 
-            case 8:
+            case 7:
                 StartCoroutine(Move(wood3, wood3Target));
                 break;
 
-            case 9:
+            case 8:
                 RemoveByTag("Dig4");
                 break;
 
-            case 10:
+            case 9:
                 StartCoroutine(Move(wood4, wood4Target));
                 break;
 
-            case 11:
+            case 10:
                 RemoveByTag("Dig5");
                 break;
 
-            case 12:
+            case 11:
                 StartCoroutine(Move(wood5, wood5Target));
                 break;
 
