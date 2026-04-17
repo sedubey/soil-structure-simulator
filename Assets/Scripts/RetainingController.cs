@@ -46,14 +46,14 @@ public class RetainingController : MonoBehaviour
         SetVisible(wood5, false);
     }
 
-    void Update()
+    public void AdvanceStep()
     {
-        // When space is pressed, go to next step
-        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        if(curr >= 11)
         {
-            curr++;
-            Step();
+            return;
         }
+        curr++;
+        Step();
     }
 
     void Step()
