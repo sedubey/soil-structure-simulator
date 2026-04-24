@@ -2,7 +2,7 @@ using System;
 
 public class ShallowFoundation
 {
-    public static double[,] Terzaghi =  // Table of values for different degrees
+    public static double[,] Terzaghi =
     {
         {0, 5.70, 1.00, 0.00},
         {10, 9.61, 2.69, 0.56},
@@ -26,11 +26,11 @@ public class ShallowFoundation
         {46, 196.22, 204.19, 407.11}
     };
 
-    public static bool GetNum(int deg, out double Nc, out double Nq, out double Ny)   // Assigns Nc, Nq, Ny based off degree
+    public static bool GetNum(int deg, out double Nc, out double Nq, out double Ny)
     {
-        for (int i = 0; i < Terzaghi.GetLength(0); i++) // Loop through table
+        for (int i = 0; i < Terzaghi.GetLength(0); i++)
         {
-            if (deg == (int)Terzaghi[i, 0]) // Find degree, assign values
+            if (deg == (int)Terzaghi[i, 0])
             {
                 Nc = Terzaghi[i, 1];
                 Nq = Terzaghi[i, 2];
@@ -39,43 +39,43 @@ public class ShallowFoundation
             }
         }
 
-        Nc = 0; Nq = 0; Ny = 0; // Otherwise
+        Nc = 0; Nq = 0; Ny = 0;
         return false;
     }
 
-    public static double BearingCapacity(int deg, double c, double q, double y, double b)
+    // Overburden pressure = unit weight * depth. For surface foundations, depth = 0, so overburden = 0
+    public static double BearingCapacity(int deg, double c, double overburdenPressure, double y, double b)
     {
         GetNum(deg, out double Nc, out double Nq, out double Ny);
-        return (c * Nc) + (q * Nq) + (0.5 * y * b * Ny);    // Bearing capacity equation (same as Strip footing might delete)
+        return (c * Nc) + (overburdenPressure * Nq) + (0.5 * y * b * Ny);
     }
 
-    public static double StripFootingDrained(int deg, double c, double q, double y, double b)
+    public static double StripFootingDrained(int deg, double c, double overburdenPressure, double y, double b)
     {
         GetNum(deg, out double Nc, out double Nq, out double Ny);
-        return (c * Nc) + (q * Nq) + (0.5 * y * b * Ny);    // Strip footing equation
+        return (c * Nc) + (overburdenPressure * Nq) + (0.5 * y * b * Ny);
     }
 
-    public static double StripFootingUndrained(double Cu, double q)
+    public static double StripFootingUndrained(double Cu)
     {
-        return (5.7 * Cu) + q;  // Strip footing equation (Undrained)
+        return (5.7 * Cu);  // Removed + q since q is overburden, assumed 0 for surface
     }
 
-    public static double SquareFootingDrained(int deg, double c, double Sc, double q, double y, double b, bool isSquare)
+    public static double SquareFootingDrained(int deg, double c, double Sc, double overburdenPressure, double y, double b, bool isSquare)
     {
         GetNum(deg, out double Nc, out double Nq, out double Ny);
 
         double Sy;
-
-        if (isSquare)   // Sy is different based on shape
+        if (isSquare)
             Sy = 0.6;
         else
             Sy = 0.8;
 
-        return (c * Nc * Sc) + (q * Nq) + (0.5 * y * b * Ny * Sy);  // Square/Circle equation
+        return (c * Nc * Sc) + (overburdenPressure * Nq) + (0.5 * y * b * Ny * Sy);
     }
 
-    public static double SquareFootingUndrained(double Cu, double Sc, double q)
+    public static double SquareFootingUndrained(double Cu, double Sc)
     {
-        return (5.7 * Cu * Sc) + q; // Square/Circle equation
+        return (5.7 * Cu * Sc);  // Removed + q
     }
 }

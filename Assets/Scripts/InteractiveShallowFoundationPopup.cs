@@ -39,12 +39,12 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
     private bool cachedCursorVisible;
     private bool hasCachedCursorState;
 
-    // Failure indicator fields
-    private GameObject failureIndicatorObject;
-    private Image failureIndicatorImage;
-    private Text failureIndicatorText;
-    private float failureIndicatorShowTime;
-    private const float FailureIndicatorDuration = 3f;
+    // Status indicator fields
+    private GameObject statusIndicatorObject;
+    private Image statusIndicatorBackground;
+    private Text statusIndicatorText;
+    private float statusIndicatorShowTime;
+    private const float StatusIndicatorDuration = 3f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -76,11 +76,16 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         InteractiveShallowFoundationPopup popup = FindObjectOfType<InteractiveShallowFoundationPopup>();
         if (popup != null)
         {
-            popup.ShowFailureIndicator();
+            popup.ShowStatusIndicator(false);
         }
-        else
+    }
+
+    public static void NotifyCalculationPassed()
+    {
+        InteractiveShallowFoundationPopup popup = FindObjectOfType<InteractiveShallowFoundationPopup>();
+        if (popup != null)
         {
-            Debug.LogError("InteractiveShallowFoundationPopup not found! Cannot show failure indicator.");
+            popup.ShowStatusIndicator(true);
         }
     }
 
@@ -108,39 +113,40 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
     }
 
     private void Update()
+{
+    // Handle status indicator timing
+    if (statusIndicatorObject != null && statusIndicatorObject.activeSelf)
     {
-        // Handle failure indicator timing
-        if (failureIndicatorObject != null && failureIndicatorObject.activeSelf)
+        if (Time.unscaledTime >= statusIndicatorShowTime + StatusIndicatorDuration)
         {
-            if (Time.unscaledTime >= failureIndicatorShowTime + FailureIndicatorDuration)
-            {
-                HideFailureIndicator();
-            }
-        }
-
-        if (overlayRoot != null && overlayRoot.activeSelf)
-        {
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                HideFailureIndicator();
-                ClosePopup();
-            }
-
-            return;
-        }
-
-        if (Time.unscaledTime >= nextReferenceSearchTime)
-        {
-            TryWireSceneReferences(false);
-            nextReferenceSearchTime = Time.unscaledTime + 1f;
-        }
-
-        if (WasPrimaryPressThisFrame() && DidRaycastHitInteractiveButton())
-        {
-            HideFailureIndicator();
-            OpenPopup();
+            HideStatusIndicator();
         }
     }
+
+    // If popup is open, only check for Escape
+    if (overlayRoot != null && overlayRoot.activeSelf)
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            HideStatusIndicator();
+            ClosePopup();
+        }
+        return; // Don't do anything else while popup is open
+    }
+
+    // Only check for scene references and raycasts when popup is closed
+    if (Time.unscaledTime >= nextReferenceSearchTime)
+    {
+        TryWireSceneReferences(false);
+        nextReferenceSearchTime = Time.unscaledTime + 1f;
+    }
+
+    if (WasPrimaryPressThisFrame() && DidRaycastHitInteractiveButton())
+    {
+        HideStatusIndicator();
+        OpenPopup();
+    }
+}
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
@@ -155,7 +161,7 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         uiListenerBound = false;
 
         ClosePopup();
-        HideFailureIndicator();
+        HideStatusIndicator();
         TryWireSceneReferences(true);
     }
 
@@ -356,39 +362,42 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
     }
 
     private void OpenPopup()
+{
+    if (overlayRoot != null && overlayRoot.activeSelf)
     {
-        if (overlayRoot != null && overlayRoot.activeSelf)
-        {
-            return;
-        }
-
-        TryWireSceneReferences(true);
-        EnsureEventSystem();
-
-        if (targetController != null)
-        {
-            PopulateFieldsFromController(targetController);
-        }
-
-        SetError(string.Empty);
-
-        if (overlayRoot != null)
-        {
-            overlayRoot.SetActive(true);
-        }
-
-        EnterPopupInteractionMode();
-        if (degInput != null)
-        {
-            degInput.Select();
-            degInput.ActivateInputField();
-        }
+        return; // Already open
     }
+
+    TryWireSceneReferences(true);
+    EnsureEventSystem();
+
+    if (targetController != null)
+    {
+        // Only READ values, don't trigger anything
+        PopulateFieldsFromController(targetController);
+    }
+
+    SetError(string.Empty);
+
+    if (overlayRoot != null)
+    {
+        overlayRoot.SetActive(true);
+    }
+
+    EnterPopupInteractionMode();
+    if (degInput != null)
+    {
+        degInput.Select();
+        degInput.ActivateInputField();
+    }
+    
+    Debug.Log("Popup opened - controller values read, waiting for Apply");
+}
 
     private void ClosePopup()
     {
         ExitPopupInteractionMode();
-        HideFailureIndicator();
+        HideStatusIndicator();
 
         if (overlayRoot != null)
         {
@@ -603,31 +612,36 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         }
     }
 
-    private void ShowFailureIndicator()
+    private void ShowStatusIndicator(bool passed)
     {
-        if (failureIndicatorObject != null)
+        if (statusIndicatorObject != null)
         {
-            failureIndicatorObject.SetActive(true);
-            failureIndicatorShowTime = Time.unscaledTime;
-            Debug.Log("FAILURE INDICATOR SHOWN");
-        }
-        else
-        {
-            Debug.LogError("Failure indicator object is null!");
+            if (passed)
+            {
+                statusIndicatorBackground.color = new Color(0.15f, 0.7f, 0.2f, 0.95f); // Green
+                statusIndicatorText.text = "✓";
+            }
+            else
+            {
+                statusIndicatorBackground.color = new Color(0.9f, 0.1f, 0.1f, 0.95f); // Red
+                statusIndicatorText.text = "✗";
+            }
+            
+            statusIndicatorObject.SetActive(true);
+            statusIndicatorShowTime = Time.unscaledTime;
         }
     }
 
-    private void HideFailureIndicator()
+    private void HideStatusIndicator()
     {
-        if (failureIndicatorObject != null)
+        if (statusIndicatorObject != null)
         {
-            failureIndicatorObject.SetActive(false);
+            statusIndicatorObject.SetActive(false);
         }
     }
 
     private void CreatePopupUI()
     {
-        // Create main canvas
         GameObject canvasObject = new GameObject("SF Popup Canvas");
         canvasObject.transform.SetParent(transform, false);
 
@@ -642,10 +656,8 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
 
         canvasObject.AddComponent<GraphicRaycaster>();
 
-        // Create failure indicator FIRST so it's behind the popup but still visible
-        CreateFailureIndicator(canvas);
+        CreateStatusIndicator(canvas);
 
-        // Create the popup overlay
         overlayRoot = new GameObject("Popup Overlay");
         overlayRoot.transform.SetParent(canvasObject.transform, false);
         Image overlayImage = overlayRoot.AddComponent<Image>();
@@ -701,7 +713,6 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         cuInput = CreateFieldRow(panel.transform, "Cu (undrained shear)", "40");
         scInput = CreateFieldRow(panel.transform, "Sc (shape factor)", "1.3");
 
-        // Add the toggle for footing type
         GameObject toggleRow = new GameObject("Footing Toggle Row");
         toggleRow.transform.SetParent(panel.transform, false);
 
@@ -768,47 +779,37 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         cancelButton.onClick.AddListener(ClosePopup);
     }
 
-    private void CreateFailureIndicator(Canvas canvas)
+    private void CreateStatusIndicator(Canvas canvas)
     {
-        // Create the indicator as a direct child of the canvas
-        failureIndicatorObject = new GameObject("Failure Indicator");
-        failureIndicatorObject.transform.SetParent(canvas.transform, false);
-        
-        // Set it to be the last sibling so it renders on top
-        failureIndicatorObject.transform.SetAsLastSibling();
+        statusIndicatorObject = new GameObject("Status Indicator");
+        statusIndicatorObject.transform.SetParent(canvas.transform, false);
+        statusIndicatorObject.transform.SetAsLastSibling();
 
-        // Add Image component for the red circle background
-        failureIndicatorImage = failureIndicatorObject.AddComponent<Image>();
-        failureIndicatorImage.color = new Color(0.9f, 0.1f, 0.1f, 0.95f);
+        statusIndicatorBackground = statusIndicatorObject.AddComponent<Image>();
+        statusIndicatorBackground.color = new Color(0.9f, 0.1f, 0.1f, 0.95f);
 
-        // Position in top-right corner
-        RectTransform indicatorRect = failureIndicatorObject.GetComponent<RectTransform>();
+        RectTransform indicatorRect = statusIndicatorObject.GetComponent<RectTransform>();
         indicatorRect.anchorMin = new Vector2(1f, 1f);
         indicatorRect.anchorMax = new Vector2(1f, 1f);
         indicatorRect.pivot = new Vector2(1f, 1f);
         indicatorRect.anchoredPosition = new Vector2(-30f, -30f);
         indicatorRect.sizeDelta = new Vector2(70f, 70f);
 
-        // Create the exclamation text
-        GameObject textObject = new GameObject("Exclamation Text");
-        textObject.transform.SetParent(failureIndicatorObject.transform, false);
+        GameObject textObject = new GameObject("Status Text");
+        textObject.transform.SetParent(statusIndicatorObject.transform, false);
 
-        failureIndicatorText = textObject.AddComponent<Text>();
-        failureIndicatorText.text = "!";
-        failureIndicatorText.font = GetDefaultFont();
-        failureIndicatorText.fontSize = 52;
-        failureIndicatorText.fontStyle = FontStyle.Bold;
-        failureIndicatorText.alignment = TextAnchor.MiddleCenter;
-        failureIndicatorText.color = Color.white;
+        statusIndicatorText = textObject.AddComponent<Text>();
+        statusIndicatorText.text = "✓";
+        statusIndicatorText.font = GetDefaultFont();
+        statusIndicatorText.fontSize = 52;
+        statusIndicatorText.fontStyle = FontStyle.Bold;
+        statusIndicatorText.alignment = TextAnchor.MiddleCenter;
+        statusIndicatorText.color = Color.white;
 
-        // Make text fill the parent
         RectTransform textRect = textObject.GetComponent<RectTransform>();
         Stretch(textRect);
 
-        // Start hidden
-        failureIndicatorObject.SetActive(false);
-        
-        Debug.Log("Failure indicator created successfully");
+        statusIndicatorObject.SetActive(false);
     }
 
     private Toggle CreateToggle(Transform parent)
@@ -818,7 +819,6 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
 
         Toggle toggle = toggleObject.AddComponent<Toggle>();
         
-        // Background
         GameObject background = new GameObject("Background");
         background.transform.SetParent(toggleObject.transform, false);
         Image bgImage = background.AddComponent<Image>();
@@ -834,7 +834,6 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         bgRect.sizeDelta = new Vector2(24f, 24f);
         bgRect.anchoredPosition = Vector2.zero;
 
-        // Checkmark
         GameObject checkmark = new GameObject("Checkmark");
         checkmark.transform.SetParent(background.transform, false);
         Image checkImage = checkmark.AddComponent<Image>();
@@ -846,7 +845,6 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         checkRect.offsetMin = Vector2.zero;
         checkRect.offsetMax = Vector2.zero;
 
-        // Label
         GameObject labelObject = new GameObject("Label");
         labelObject.transform.SetParent(toggleObject.transform, false);
         Text labelText = labelObject.AddComponent<Text>();
