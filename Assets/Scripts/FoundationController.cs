@@ -15,10 +15,12 @@ public class FoundationController : MonoBehaviour
     public double q = 1000.0;
     public double Cu = 40.0;
     public double Sc = 1.3;
+    
+    [Header("Footing Type")]
+    public bool useSquareFooting = true;
 
-    // Qu is now read-only and calculated, not set manually
     [Header("Calculated Result")]
-    [SerializeField] private double qu = 500; // Renamed to lowercase for consistency
+    [SerializeField] private double qu = 500;
     public double Qu 
     { 
         get { return qu; }
@@ -36,10 +38,51 @@ public class FoundationController : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("Controller running");
+        Debug.Log("=== FoundationController started on GameObject: " + gameObject.name + " ===");
         CacheStartState();
         ResetVisuals();
-        CalculateBearingCapacity(); // Calculate initial Qu
+        CalculateBearingCapacity();
+        Debug.Log("=== Initial Qu = " + Qu + " ===");
+    }
+
+    void Update()
+    {
+        // Press F to test failure indicator
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            Debug.Log("=== MANUAL TEST: Showing failure indicator ===");
+            InteractiveShallowFoundationPopup.NotifyCalculationFailed();
+        }
+        
+        // Press G to force a failure
+        if (Input.GetKeyDown(KeyCode.G))
+        {
+            Debug.Log("=== MANUAL TEST: Forcing foundation failure ===");
+            q = 2000;
+            Qu = 500;
+            RunSimulation();
+        }
+        
+        // Press 1 for pass scenario
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            Debug.Log("=== KEY 1: Running PASS scenario ===");
+            RunScenario(0);
+        }
+        
+        // Press 2 for fail scenario
+        if (Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            Debug.Log("=== KEY 2: Running FAIL scenario ===");
+            RunScenario(1);
+        }
+        
+        // Press 3 for interactive scenario
+        if (Input.GetKeyDown(KeyCode.Alpha3))
+        {
+            Debug.Log("=== KEY 3: Running INTERACTIVE scenario ===");
+            RunScenario(2);
+        }
     }
 
     public void ApplyParametersAndRun(
@@ -49,8 +92,12 @@ public class FoundationController : MonoBehaviour
         double width,
         double appliedLoad,
         double undrainedShearStrength,
-        double shapeFactor)
+        double shapeFactor,
+        bool squareFooting)
     {
+        Debug.Log("=== ApplyParametersAndRun CALLED ===");
+        Debug.Log($"Parameters: deg={degree}, c={cohesion}, y={unitWeight}, b={width}, q={appliedLoad}, Cu={undrainedShearStrength}, Sc={shapeFactor}, Square={squareFooting}");
+        
         deg = degree;
         c = cohesion;
         y = unitWeight;
@@ -58,100 +105,97 @@ public class FoundationController : MonoBehaviour
         q = appliedLoad;
         Cu = undrainedShearStrength;
         Sc = shapeFactor;
+        useSquareFooting = squareFooting;
 
-        // Calculate Qu based on the parameters
-        if (!CalculateBearingCapacity())
-        {
-            // If calculation failed (invalid degree), notify the popup
-            InteractiveShallowFoundationPopup.NotifyCalculationFailed();
-            Debug.LogError("Failed to calculate bearing capacity. Invalid degree: " + deg);
-            return;
-        }
-
-        RunScenario(2);
+        CalculateBearingCapacity();
+        Debug.Log($"After calculation: Qu={Qu}, q={q}, Will fail: {q > Qu}");
+        RunSimulation();
     }
 
     public void RunScenario(int mode)
     {
+        Debug.Log("=== RunScenario CALLED with mode: " + mode + " on GameObject: " + gameObject.name + " ===");
         CacheStartState();
+        ResetVisuals();
 
         if (mode == 0) // Pass
         {
             q = 300;
+            Qu = 500;
+            Debug.Log("PASS MODE: Set q=300, Qu=500, q > Qu = " + (q > Qu));
         }
         else if (mode == 1) // Fail
         {
             q = 1000;
+            Qu = 500;
+            Debug.Log("FAIL MODE: Set q=1000, Qu=500, q > Qu = " + (q > Qu));
         }
         else if (mode == 2) // Interactive
         {
-            // Use current values, but recalculate Qu
-            if (!CalculateBearingCapacity())
-            {
-                InteractiveShallowFoundationPopup.NotifyCalculationFailed();
-                Debug.LogError("Failed to calculate bearing capacity. Invalid degree: " + deg);
-                return;
-            }
+            Debug.Log("INTERACTIVE MODE: Using current values, recalculating Qu");
+            CalculateBearingCapacity();
+            Debug.Log($"After calculation: Qu={Qu}, q={q}, Will fail: {q > Qu}");
         }
 
         RunSimulation();
     }
 
-    private bool CalculateBearingCapacity()
+    private void CalculateBearingCapacity()
     {
-        // Try to get the bearing capacity factors from the table
+        Debug.Log($"--- CalculateBearingCapacity: deg={deg}, Square={useSquareFooting} ---");
+        
         if (!ShallowFoundation.GetNum(deg, out double Nc, out double Nq, out double Ny))
         {
-            Debug.LogError("Invalid friction angle: " + deg + "°. Must be one of: 0, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46");
-            return false;
+            Debug.LogError($"INVALID DEGREE: {deg}°");
+            return;
         }
 
-        // Calculate bearing capacity based on conditions
-        if (c > 0 && Cu <= 0) // Drained condition (has cohesion but no undrained shear)
+        Debug.Log($"Factors: Nc={Nc}, Nq={Nq}, Ny={Ny}");
+
+        if (useSquareFooting)
         {
-            // Calculate for both strip and square, use the more appropriate one
-            double stripCapacity = ShallowFoundation.StripFootingDrained(deg, c, q, y, b);
-            double squareCapacity = ShallowFoundation.SquareFootingDrained(deg, c, Sc, q, y, b, true);
-            
-            // Use square footing capacity (more conservative)
-            Qu = squareCapacity;
-            
-            Debug.Log($"Drained calculation - Strip: {stripCapacity:F2}, Square: {squareCapacity:F2}, Using: {Qu:F2}");
-        }
-        else if (Cu > 0) // Undrained condition
-        {
-            double stripCapacity = ShallowFoundation.StripFootingUndrained(Cu, q);
-            double squareCapacity = ShallowFoundation.SquareFootingUndrained(Cu, Sc, q);
-            
-            // Use square footing capacity
-            Qu = squareCapacity;
-            
-            Debug.Log($"Undrained calculation - Strip: {stripCapacity:F2}, Square: {squareCapacity:F2}, Using: {Qu:F2}");
+            if (Cu > 0 && c <= 0)
+            {
+                Qu = ShallowFoundation.SquareFootingUndrained(Cu, Sc, q);
+                Debug.Log($"Square Undrained: Qu = 5.7 * {Cu} * {Sc} + {q} = {Qu}");
+            }
+            else
+            {
+                Qu = ShallowFoundation.SquareFootingDrained(deg, c, Sc, q, y, b, true);
+                Debug.Log($"Square Drained: Qu = {Qu}");
+            }
         }
         else
         {
-            // Default to basic bearing capacity equation
-            Qu = ShallowFoundation.BearingCapacity(deg, c, q, y, b);
-            Debug.Log($"Basic bearing capacity: {Qu:F2}");
+            if (Cu > 0 && c <= 0)
+            {
+                Qu = ShallowFoundation.StripFootingUndrained(Cu, q);
+                Debug.Log($"Strip Undrained: Qu = 5.7 * {Cu} + {q} = {Qu}");
+            }
+            else
+            {
+                Qu = ShallowFoundation.StripFootingDrained(deg, c, q, y, b);
+                Debug.Log($"Strip Drained: Qu = {Qu}");
+            }
         }
-
-        return true;
+        
+        Debug.Log($"--- Final Qu = {Qu} ---");
     }
 
     public void RunSimulation()
     {
+        Debug.Log("=== RunSimulation START ===");
         CacheStartState();
         ResetVisuals();
 
-        // Calculate Qu one more time to ensure it's up to date
-        CalculateBearingCapacity();
-
-        Debug.Log($"Qu (capacity) = {Qu:F2}");
-        Debug.Log($"q (load) = {q:F2}");
+        Debug.Log($"FINAL CHECK: Qu (capacity) = {Qu:F2}, q (load) = {q:F2}");
+        Debug.Log($"FAILURE CHECK: Is {q:F2} > {Qu:F2}? {q > Qu}");
 
         if (q > Qu)
         {
-            Debug.Log("FOUNDATION FAILURE - Load exceeds capacity!");
+            Debug.Log("!!! FOUNDATION FAILURE - Starting failure animation !!!");
+            
+            InteractiveShallowFoundationPopup.NotifyCalculationFailed();
             
             Vector3 sandTargetPos = sandStartPosition + new Vector3(0f, -0.1f, 0f);
             Vector3 sandTargetScale = sandStartScale + new Vector3(0f, -0.2f, 0f);
@@ -160,25 +204,39 @@ public class FoundationController : MonoBehaviour
             if (Scenario_1 != null)
             {
                 Scenario_1.SetActive(true);
+                Debug.Log("Activated Scenario_1");
+            }
+            else
+            {
+                Debug.LogWarning("Scenario_1 is null!");
             }
 
             if (Sand_M != null)
             {
                 StartCoroutine(MoveScale(Sand_M.transform, sandTargetPos, sandTargetScale));
+                Debug.Log("Started Sand_M movement");
+            }
+            else
+            {
+                Debug.LogWarning("Sand_M is null!");
             }
 
             if (Foundation != null)
             {
                 StartCoroutine(Move(Foundation.transform, foundationTargetPos));
+                Debug.Log("Started Foundation movement");
             }
-            
-            // Notify about the failure
-            InteractiveShallowFoundationPopup.NotifyCalculationFailed();
+            else
+            {
+                Debug.LogWarning("Foundation is null!");
+            }
         }
         else
         {
-            Debug.Log("Foundation is stable - Load is within capacity.");
+            Debug.Log("Foundation is STABLE - No failure");
         }
+        
+        Debug.Log("=== RunSimulation END ===");
     }
 
     private void CacheStartState()
@@ -200,6 +258,7 @@ public class FoundationController : MonoBehaviour
         }
 
         hasCachedStartState = true;
+        Debug.Log("Cached start positions");
     }
 
     public void ResetVisuals()
