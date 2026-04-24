@@ -40,8 +40,13 @@ public class Button : MonoBehaviour
 
             if (buttonType == ButtonType.ShallowInteractive)
             {
-                Debug.Log("Running shallow int");
-                foundationController.RunScenario(2);
+                Debug.Log("Opening shallow interactive popup");
+
+                if (!InteractiveShallowFoundationPopup.TryOpenPopup() && foundationController != null)
+                {
+                    // Fallback so interactive mode still runs if popup bootstrap fails.
+                    foundationController.RunScenario(2);
+                }
             }
         }
     }

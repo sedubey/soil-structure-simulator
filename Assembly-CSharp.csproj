@@ -52,8 +52,10 @@
     <Compile Include="Assets\Scripts\InteractiveShallowFoundationPopup.cs" />
     <Compile Include="Assets\Scripts\Button.cs" />
     <Compile Include="Assets\Scripts\FoundationController.cs" />
+    <Compile Include="Assets\Scripts\SimplePlayerMotor.cs" />
     <Compile Include="Assets\Scripts\RetainingController.cs" />
     <Compile Include="Assets\Scripts\PlayerMovement.cs" />
+    <Compile Include="Assets\Scripts\SimulationResetController.cs" />
     <Compile Include="Assets\Scripts\ShallowFoundation.cs" />
     <Compile Include="Assets\Scripts\MouseMovement.cs" />
   </ItemGroup>

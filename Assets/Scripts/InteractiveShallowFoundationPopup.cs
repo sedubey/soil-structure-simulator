@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -33,6 +34,11 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
     private InputField scInput;
     private InputField quInput;
 
+    private readonly List<Behaviour> temporarilyDisabled = new List<Behaviour>();
+    private CursorLockMode cachedCursorLockMode;
+    private bool cachedCursorVisible;
+    private bool hasCachedCursorState;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
@@ -44,6 +50,18 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         GameObject popupHost = new GameObject("Interactive Shallow Foundation Popup");
         DontDestroyOnLoad(popupHost);
         popupHost.AddComponent<InteractiveShallowFoundationPopup>();
+    }
+
+    public static bool TryOpenPopup()
+    {
+        InteractiveShallowFoundationPopup popup = FindObjectOfType<InteractiveShallowFoundationPopup>();
+        if (popup == null)
+        {
+            return false;
+        }
+
+        popup.OpenPopup();
+        return true;
     }
 
     private void Awake()
@@ -61,6 +79,7 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= HandleSceneLoaded;
+        ClosePopup();
     }
 
     private void Start()
@@ -72,6 +91,11 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
     {
         if (overlayRoot != null && overlayRoot.activeSelf)
         {
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                ClosePopup();
+            }
+
             return;
         }
 
@@ -301,6 +325,11 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
 
     private void OpenPopup()
     {
+        if (overlayRoot != null && overlayRoot.activeSelf)
+        {
+            return;
+        }
+
         TryWireSceneReferences(true);
         EnsureEventSystem();
 
@@ -315,10 +344,19 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         {
             overlayRoot.SetActive(true);
         }
+
+        EnterPopupInteractionMode();
+        if (degInput != null)
+        {
+            degInput.Select();
+            degInput.ActivateInputField();
+        }
     }
 
     private void ClosePopup()
     {
+        ExitPopupInteractionMode();
+
         if (overlayRoot != null)
         {
             overlayRoot.SetActive(false);
@@ -479,6 +517,60 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
 #endif
     }
 
+    private void EnterPopupInteractionMode()
+    {
+        if (!hasCachedCursorState)
+        {
+            cachedCursorLockMode = Cursor.lockState;
+            cachedCursorVisible = Cursor.visible;
+            hasCachedCursorState = true;
+        }
+
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        temporarilyDisabled.Clear();
+        DisableBehaviourType<MouseMovement>();
+        DisableBehaviourType<PlayerMovement>();
+        DisableBehaviourType<SimplePlayerMotor>();
+    }
+
+    private void ExitPopupInteractionMode()
+    {
+        for (int i = 0; i < temporarilyDisabled.Count; i++)
+        {
+            Behaviour behaviour = temporarilyDisabled[i];
+            if (behaviour != null)
+            {
+                behaviour.enabled = true;
+            }
+        }
+
+        temporarilyDisabled.Clear();
+
+        if (hasCachedCursorState)
+        {
+            Cursor.lockState = cachedCursorLockMode;
+            Cursor.visible = cachedCursorVisible;
+            hasCachedCursorState = false;
+        }
+    }
+
+    private void DisableBehaviourType<T>() where T : Behaviour
+    {
+        T[] behaviours = FindObjectsOfType<T>();
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            if (!behaviours[i].enabled)
+            {
+                continue;
+            }
+
+            behaviours[i].enabled = false;
+            temporarilyDisabled.Add(behaviours[i]);
+        }
+    }
+
     private void CreatePopupUI()
     {
         GameObject canvasObject = new GameObject("SF Popup Canvas");
@@ -510,13 +602,15 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         panelRect.anchorMin = new Vector2(0.5f, 0.5f);
         panelRect.anchorMax = new Vector2(0.5f, 0.5f);
         panelRect.pivot = new Vector2(0.5f, 0.5f);
-        panelRect.sizeDelta = new Vector2(780f, 640f);
+        float panelWidth = Mathf.Min(Screen.width * 0.9f, 760f);
+        float panelHeight = Mathf.Min(Screen.height * 0.95f, 640f);
+        panelRect.sizeDelta = new Vector2(panelWidth, panelHeight);
         panelRect.anchoredPosition = Vector2.zero;
 
         VerticalLayoutGroup panelLayout = panel.AddComponent<VerticalLayoutGroup>();
-        panelLayout.padding = new RectOffset(24, 24, 24, 24);
-        panelLayout.spacing = 12f;
-        panelLayout.childControlHeight = false;
+        panelLayout.padding = new RectOffset(18, 18, 18, 18);
+        panelLayout.spacing = 6f;
+        panelLayout.childControlHeight = true;
         panelLayout.childControlWidth = true;
         panelLayout.childForceExpandHeight = false;
         panelLayout.childForceExpandWidth = true;
@@ -525,19 +619,19 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
             panel.transform,
             "Title",
             "Interactive Shallow Foundation Parameters",
-            28,
+            20,
             TextAnchor.MiddleLeft,
             new Color(0.12f, 0.12f, 0.12f, 1f));
-        title.gameObject.AddComponent<LayoutElement>().minHeight = 36f;
+        title.gameObject.AddComponent<LayoutElement>().minHeight = 30f;
 
         Text subtitle = CreateLabel(
             panel.transform,
             "Subtitle",
             "Enter values and press Apply to run the scenario.",
-            18,
+            13,
             TextAnchor.MiddleLeft,
             new Color(0.2f, 0.2f, 0.2f, 1f));
-        subtitle.gameObject.AddComponent<LayoutElement>().minHeight = 26f;
+        subtitle.gameObject.AddComponent<LayoutElement>().minHeight = 22f;
 
         degInput = CreateFieldRow(panel.transform, "deg (friction angle)", "26");
         degInput.contentType = InputField.ContentType.IntegerNumber;
@@ -553,10 +647,10 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
             panel.transform,
             "Error",
             string.Empty,
-            16,
+            14,
             TextAnchor.MiddleLeft,
             new Color(0.75f, 0.15f, 0.15f, 1f));
-        errorText.gameObject.AddComponent<LayoutElement>().minHeight = 30f;
+        errorText.gameObject.AddComponent<LayoutElement>().minHeight = 22f;
 
         GameObject buttonRow = new GameObject("Button Row");
         buttonRow.transform.SetParent(panel.transform, false);
@@ -567,7 +661,7 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         buttonLayout.childControlWidth = false;
         buttonLayout.childForceExpandHeight = false;
         buttonLayout.childForceExpandWidth = false;
-        buttonRow.AddComponent<LayoutElement>().minHeight = 48f;
+        buttonRow.AddComponent<LayoutElement>().minHeight = 42f;
 
         UIButton applyButton = CreateButton(
             buttonRow.transform,
@@ -590,31 +684,32 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         row.transform.SetParent(parent, false);
 
         HorizontalLayoutGroup rowLayout = row.AddComponent<HorizontalLayoutGroup>();
-        rowLayout.spacing = 10f;
+        rowLayout.spacing = 8f;
         rowLayout.childAlignment = TextAnchor.MiddleLeft;
-        rowLayout.childControlHeight = false;
-        rowLayout.childControlWidth = false;
+        rowLayout.childControlHeight = true;
+        rowLayout.childControlWidth = true;
         rowLayout.childForceExpandHeight = false;
         rowLayout.childForceExpandWidth = false;
-        row.AddComponent<LayoutElement>().minHeight = 40f;
+        row.AddComponent<LayoutElement>().minHeight = 32f;
 
         Text label = CreateLabel(
             row.transform,
             "Label",
             labelText,
-            17,
+            13,
             TextAnchor.MiddleLeft,
             new Color(0.15f, 0.15f, 0.15f, 1f));
         LayoutElement labelLayout = label.gameObject.AddComponent<LayoutElement>();
-        labelLayout.preferredWidth = 300f;
-        labelLayout.minWidth = 300f;
-        labelLayout.minHeight = 36f;
+        labelLayout.preferredWidth = 250f;
+        labelLayout.minWidth = 180f;
+        labelLayout.minHeight = 30f;
 
         InputField input = CreateInputField(row.transform, placeholder);
         LayoutElement inputLayout = input.gameObject.AddComponent<LayoutElement>();
-        inputLayout.preferredWidth = 360f;
-        inputLayout.minWidth = 260f;
-        inputLayout.minHeight = 36f;
+        inputLayout.preferredWidth = 230f;
+        inputLayout.flexibleWidth = 1f;
+        inputLayout.minWidth = 160f;
+        inputLayout.minHeight = 30f;
 
         return input;
     }
@@ -638,28 +733,28 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
             inputObject.transform,
             "Text",
             string.Empty,
-            17,
+            13,
             TextAnchor.MiddleLeft,
             new Color(0.12f, 0.12f, 0.12f, 1f));
         RectTransform textRect = text.rectTransform;
         textRect.anchorMin = Vector2.zero;
         textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = new Vector2(10f, 6f);
-        textRect.offsetMax = new Vector2(-10f, -7f);
+        textRect.offsetMin = new Vector2(8f, 4f);
+        textRect.offsetMax = new Vector2(-8f, -4f);
 
         Text placeholder = CreateLabel(
             inputObject.transform,
             "Placeholder",
             placeholderText,
-            17,
+            13,
             TextAnchor.MiddleLeft,
             new Color(0.55f, 0.55f, 0.55f, 0.85f));
         placeholder.fontStyle = FontStyle.Italic;
         RectTransform placeholderRect = placeholder.rectTransform;
         placeholderRect.anchorMin = Vector2.zero;
         placeholderRect.anchorMax = Vector2.one;
-        placeholderRect.offsetMin = new Vector2(10f, 6f);
-        placeholderRect.offsetMax = new Vector2(-10f, -7f);
+        placeholderRect.offsetMin = new Vector2(8f, 4f);
+        placeholderRect.offsetMax = new Vector2(-8f, -4f);
 
         inputField.textComponent = text;
         inputField.placeholder = placeholder;
@@ -679,15 +774,15 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         button.targetGraphic = image;
 
         LayoutElement layout = buttonObject.AddComponent<LayoutElement>();
-        layout.preferredWidth = 170f;
-        layout.minWidth = 130f;
-        layout.minHeight = 42f;
+        layout.preferredWidth = 130f;
+        layout.minWidth = 120f;
+        layout.minHeight = 36f;
 
         Text text = CreateLabel(
             buttonObject.transform,
             "Text",
             buttonText,
-            18,
+            14,
             TextAnchor.MiddleCenter,
             textColor);
         Stretch(text.rectTransform);
