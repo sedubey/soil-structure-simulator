@@ -17,7 +17,7 @@ public class FoundationController : MonoBehaviour
     public double Cu = 40.0;
     public double Sc = 1.3;
 
-    public double Qu = 500;   // Set high for failure testing
+    public double Qu = 500;
 
     [Header("Movement")]
     public float moveSpeed = 2f;
@@ -28,15 +28,11 @@ public class FoundationController : MonoBehaviour
     private Vector3 sandStartScale;
     private bool hasCachedStartState;
 
-    void Awake()
-    {
-        CacheStartState();
-    }
-
     void Start()
     {
         Debug.Log("Controller running");
-        RunSimulation();
+        CacheStartState();
+        ResetVisuals();
     }
 
     public void ApplyParametersAndRun(
@@ -58,37 +54,55 @@ public class FoundationController : MonoBehaviour
         Sc = shapeFactor;
         Qu = ultimateBearingCapacity;
 
+        RunScenario(2);
+    }
+
+    public void RunScenario(int mode)
+    {
+        CacheStartState();
+
+        if (mode == 0) // Pass
+        {
+            q = 300;
+            Qu = 500;
+        }
+        else if (mode == 1) // Fail
+        {
+            q = 1000;
+            Qu = 500;
+        }
+        else if (mode == 2) // Interactive
+        {
+            // Use current values set in inspector/UI.
+        }
+
         RunSimulation();
     }
 
     public void RunSimulation()
     {
         CacheStartState();
-        StopAllCoroutines();
-        ResetGeometry();
+        ResetVisuals();
 
-        if (q > Qu) // Failure
+        if (q > Qu)
         {
+            Vector3 sandTargetPos = sandStartPosition + new Vector3(0f, -0.1f, 0f);
+            Vector3 sandTargetScale = sandStartScale + new Vector3(0f, -0.2f, 0f);
+            Vector3 foundationTargetPos = foundationStartPosition + new Vector3(0f, -0.3f, 0f);
+
+            if (Scenario_1 != null)
+            {
+                Scenario_1.SetActive(true);
+            }
+
             if (Sand_M != null)
             {
-                // Scale and move middle sand
-                StartCoroutine(
-                    MoveScale(
-                        Sand_M.transform,
-                        sandStartPosition + new Vector3(0f, -0.1f, 0f),
-                        sandStartScale + new Vector3(0f, -0.2f, 0f)));
+                StartCoroutine(MoveScale(Sand_M.transform, sandTargetPos, sandTargetScale));
             }
 
             if (Foundation != null)
             {
-                // Move foundation down
-                StartCoroutine(Move(Foundation.transform, foundationStartPosition + new Vector3(0f, -0.3f, 0f)));
-            }
-
-            // Shows the scenario specific sand
-            if (Scenario_1 != null)
-            {
-                Scenario_1.SetActive(true);
+                StartCoroutine(Move(Foundation.transform, foundationTargetPos));
             }
         }
 
@@ -117,12 +131,10 @@ public class FoundationController : MonoBehaviour
         hasCachedStartState = true;
     }
 
-    private void ResetGeometry()
+    // Resets to original location so you can run it multiple times.
+    public void ResetVisuals()
     {
-        if (Scenario_1 != null)
-        {
-            Scenario_1.SetActive(false);
-        }
+        StopAllCoroutines();
 
         if (Foundation != null)
         {
@@ -134,9 +146,14 @@ public class FoundationController : MonoBehaviour
             Sand_M.transform.position = sandStartPosition;
             Sand_M.transform.localScale = sandStartScale;
         }
+
+        if (Scenario_1 != null)
+        {
+            Scenario_1.SetActive(false);
+        }
     }
 
-    IEnumerator Move(Transform obj, Vector3 target)     // Moves objects with basic animation
+    IEnumerator Move(Transform obj, Vector3 target)
     {
         while (Vector3.Distance(obj.position, target) > 0.01f)
         {
@@ -147,7 +164,7 @@ public class FoundationController : MonoBehaviour
         obj.position = target;
     }
 
-    IEnumerator MoveScale(Transform obj, Vector3 targetPos, Vector3 targetScale)     // Moves objects with basic animation
+    IEnumerator MoveScale(Transform obj, Vector3 targetPos, Vector3 targetScale)
     {
         while (Vector3.Distance(obj.position, targetPos) > 0.01f || Vector3.Distance(obj.localScale, targetScale) > 0.01f)
         {
@@ -159,5 +176,4 @@ public class FoundationController : MonoBehaviour
         obj.position = targetPos;
         obj.localScale = targetScale;
     }
-
 }

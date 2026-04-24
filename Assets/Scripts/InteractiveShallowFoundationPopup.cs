@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UIButton = UnityEngine.UI.Button;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
@@ -14,7 +15,7 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
     private const string InteractiveNameHint = "Interactive";
 
     private Transform interactiveWorldButton;
-    private Button interactiveUiButton;
+    private UIButton interactiveUiButton;
     private FoundationController targetController;
     private bool uiListenerBound;
     private float nextReferenceSearchTime;
@@ -166,9 +167,9 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         return null;
     }
 
-    private Button FindInteractiveUiButton()
+    private UIButton FindInteractiveUiButton()
     {
-        Button[] buttons = FindObjectsOfType<Button>();
+        UIButton[] buttons = FindObjectsOfType<UIButton>();
         for (int i = 0; i < buttons.Length; i++)
         {
             if (buttons[i].name.Contains("SF Interact"))
@@ -568,14 +569,14 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         buttonLayout.childForceExpandWidth = false;
         buttonRow.AddComponent<LayoutElement>().minHeight = 48f;
 
-        Button applyButton = CreateButton(
+        UIButton applyButton = CreateButton(
             buttonRow.transform,
             "Apply",
             new Color(0.12f, 0.42f, 0.84f, 1f),
             Color.white);
         applyButton.onClick.AddListener(ApplyInputs);
 
-        Button cancelButton = CreateButton(
+        UIButton cancelButton = CreateButton(
             buttonRow.transform,
             "Cancel",
             new Color(0.34f, 0.34f, 0.34f, 1f),
@@ -666,7 +667,7 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         return inputField;
     }
 
-    private Button CreateButton(Transform parent, string buttonText, Color backgroundColor, Color textColor)
+    private UIButton CreateButton(Transform parent, string buttonText, Color backgroundColor, Color textColor)
     {
         GameObject buttonObject = new GameObject(buttonText + " Button");
         buttonObject.transform.SetParent(parent, false);
@@ -674,7 +675,7 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         Image image = buttonObject.AddComponent<Image>();
         image.color = backgroundColor;
 
-        Button button = buttonObject.AddComponent<Button>();
+        UIButton button = buttonObject.AddComponent<UIButton>();
         button.targetGraphic = image;
 
         LayoutElement layout = buttonObject.AddComponent<LayoutElement>();
