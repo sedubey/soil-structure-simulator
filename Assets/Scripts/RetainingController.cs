@@ -1,5 +1,4 @@
-﻿using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine;
 using System.Collections;
 
 public class RetainingController : MonoBehaviour
@@ -26,8 +25,18 @@ public class RetainingController : MonoBehaviour
     private Vector3 wood4Target;
     private Vector3 wood5Target;
 
+    private Vector3 beamsStart;
+    private Vector3 wood1Start;
+    private Vector3 wood2Start;
+    private Vector3 wood3Start;
+    private Vector3 wood4Start;
+    private Vector3 wood5Start;
+    private bool hasCachedStart;
+
     void Start()
     {
+        CacheStartState();
+
         // Calculate where the beams/walls will drop down to (how far)
         beamsTarget = beams.position + Vector3.down * beamDropDist;
 
@@ -37,13 +46,7 @@ public class RetainingController : MonoBehaviour
         wood4Target = wood4.position + Vector3.down * woodDropDist;
         wood5Target = wood5.position + Vector3.down * woodDropDist;
 
-        // Make sure everything is hidden at start
-        SetVisible(beams, false);
-        SetVisible(wood1, false);
-        SetVisible(wood2, false);
-        SetVisible(wood3, false);
-        SetVisible(wood4, false);
-        SetVisible(wood5, false);
+        ResetScenario();
     }
 
     public void AdvanceStep()
@@ -110,13 +113,107 @@ public class RetainingController : MonoBehaviour
         }
     }
 
+    private void CacheStartState()
+    {
+        if (hasCachedStart)
+        {
+            return;
+        }
+
+        if (beams != null)
+        {
+            beamsStart = beams.position;
+        }
+
+        if (wood1 != null)
+        {
+            wood1Start = wood1.position;
+        }
+
+        if (wood2 != null)
+        {
+            wood2Start = wood2.position;
+        }
+
+        if (wood3 != null)
+        {
+            wood3Start = wood3.position;
+        }
+
+        if (wood4 != null)
+        {
+            wood4Start = wood4.position;
+        }
+
+        if (wood5 != null)
+        {
+            wood5Start = wood5.position;
+        }
+
+        hasCachedStart = true;
+    }
+
+    public void ResetScenario()
+    {
+        CacheStartState();
+        StopAllCoroutines();
+        curr = 0;
+
+        if (beams != null)
+        {
+            beams.position = beamsStart;
+            SetVisible(beams, false);
+        }
+
+        if (wood1 != null)
+        {
+            wood1.position = wood1Start;
+            SetVisible(wood1, false);
+        }
+
+        if (wood2 != null)
+        {
+            wood2.position = wood2Start;
+            SetVisible(wood2, false);
+        }
+
+        if (wood3 != null)
+        {
+            wood3.position = wood3Start;
+            SetVisible(wood3, false);
+        }
+
+        if (wood4 != null)
+        {
+            wood4.position = wood4Start;
+            SetVisible(wood4, false);
+        }
+
+        if (wood5 != null)
+        {
+            wood5.position = wood5Start;
+            SetVisible(wood5, false);
+        }
+
+        SetByTag("DigSteel", true);
+        SetByTag("Dig1", true);
+        SetByTag("Dig2", true);
+        SetByTag("Dig3", true);
+        SetByTag("Dig4", true);
+        SetByTag("Dig5", true);
+    }
+
     void RemoveByTag(string tagName)        // Hide my objects based on tag
     {
-        GameObject[] blocks = GameObject.FindGameObjectsWithTag(tagName);
+        SetByTag(tagName, false);
+    }
 
+    private void SetByTag(string tagName, bool visible)
+    {
+        GameObject[] blocks = GameObject.FindGameObjectsWithTag(tagName);
         for (int i = 0; i < blocks.Length; i++)
         {
-            blocks[i].SetActive(false);
+            blocks[i].SetActive(visible);
         }
     }
 
@@ -141,3 +238,4 @@ public class RetainingController : MonoBehaviour
         }
     }
 }
+

@@ -17,39 +17,54 @@ public class Button : MonoBehaviour
 
     private bool playerInRange = false;
 
+    void Start()
+    {
+        Debug.Log($"Button '{gameObject.name}' type: {buttonType}, controller: {(foundationController != null ? foundationController.gameObject.name : "NULL")}");
+    }
+
     void Update()
     {
         if (playerInRange && Input.GetKeyDown(KeyCode.E))
         {
+            Debug.Log($"E pressed near {buttonType}");
+
             if (buttonType == ButtonType.RetainingStep)
             {
-                retainingController.AdvanceStep();
+                if (retainingController != null)
+                    retainingController.AdvanceStep();
+                else
+                    Debug.LogError("retainingController is NULL!");
             }
 
             if (buttonType == ButtonType.ShallowPass)
             {
-                Debug.Log("Running shallow pass");
-                foundationController.RunScenario(0);
+                Debug.Log("Running ShallowPass");
+                if (foundationController != null)
+                    foundationController.RunScenario(0);
+                else
+                    Debug.LogError("foundationController is NULL!");
             }
 
             if (buttonType == ButtonType.ShallowFail)
             {
-                Debug.Log("Running shallow fail");
-                foundationController.RunScenario(1);
+                Debug.Log("Running ShallowFail");
+                if (foundationController != null)
+                    foundationController.RunScenario(1);
+                else
+                    Debug.LogError("foundationController is NULL!");
             }
 
             if (buttonType == ButtonType.ShallowInteractive)
             {
-                Debug.Log("Running shallow int");
-                foundationController.RunScenario(2);
+                Debug.Log("Opening interactive popup");
+                // Just open the popup, don't run anything else
+                InteractiveShallowFoundationPopup.TryOpenPopup();
             }
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Something entered: " + other.name);
-
         if (other.CompareTag("Player"))
             playerInRange = true;
     }
