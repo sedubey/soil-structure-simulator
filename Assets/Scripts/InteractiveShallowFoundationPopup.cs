@@ -32,12 +32,17 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
     private InputField qInput;
     private InputField cuInput;
     private InputField scInput;
-    private InputField quInput;
 
     private readonly List<Behaviour> temporarilyDisabled = new List<Behaviour>();
     private CursorLockMode cachedCursorLockMode;
     private bool cachedCursorVisible;
     private bool hasCachedCursorState;
+
+    // Failure indicator fields
+    private Image failureIndicator;
+    private float failureIndicatorShowTime;
+    private const float FailureIndicatorDuration = 3f;
+    private static bool lastAttemptFailed;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -62,6 +67,15 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
 
         popup.OpenPopup();
         return true;
+    }
+
+    public static void NotifyCalculationFailed()
+    {
+        InteractiveShallowFoundationPopup popup = FindObjectOfType<InteractiveShallowFoundationPopup>();
+        if (popup != null)
+        {
+            popup.ShowFailureIndicator();
+        }
     }
 
     private void Awake()
@@ -93,10 +107,26 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.Escape))
             {
+                HideFailureIndicator();
                 ClosePopup();
             }
 
             return;
+        }
+
+        // Handle failure indicator timing
+        if (failureIndicator != null && failureIndicator.gameObject.activeSelf)
+        {
+            if (Time.unscaledTime >= failureIndicatorShowTime + FailureIndicatorDuration)
+            {
+                HideFailureIndicator();
+            }
+        }
+
+        // Check for failed attempts
+        if (lastAttemptFailed && failureIndicator != null && !failureIndicator.gameObject.activeSelf)
+        {
+            ShowFailureIndicator();
         }
 
         if (Time.unscaledTime >= nextReferenceSearchTime)
@@ -107,6 +137,7 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
 
         if (WasPrimaryPressThisFrame() && DidRaycastHitInteractiveButton())
         {
+            HideFailureIndicator();
             OpenPopup();
         }
     }
@@ -356,6 +387,7 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
     private void ClosePopup()
     {
         ExitPopupInteractionMode();
+        HideFailureIndicator();
 
         if (overlayRoot != null)
         {
@@ -408,11 +440,6 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
             return;
         }
 
-        if (!TryParseDouble(quInput, "Qu", out double quValue))
-        {
-            return;
-        }
-
         targetController.ApplyParametersAndRun(
             degValue,
             cValue,
@@ -420,8 +447,7 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
             bValue,
             qValue,
             cuValue,
-            scValue,
-            quValue);
+            scValue);
 
         ClosePopup();
     }
@@ -485,7 +511,6 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         qInput.text = controller.q.ToString(CultureInfo.InvariantCulture);
         cuInput.text = controller.Cu.ToString(CultureInfo.InvariantCulture);
         scInput.text = controller.Sc.ToString(CultureInfo.InvariantCulture);
-        quInput.text = controller.Qu.ToString(CultureInfo.InvariantCulture);
     }
 
     private void EnsureEventSystem()
@@ -571,6 +596,25 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         }
     }
 
+    private void ShowFailureIndicator()
+    {
+        if (failureIndicator != null)
+        {
+            failureIndicator.gameObject.SetActive(true);
+            failureIndicatorShowTime = Time.unscaledTime;
+            lastAttemptFailed = true;
+        }
+    }
+
+    private void HideFailureIndicator()
+    {
+        if (failureIndicator != null)
+        {
+            failureIndicator.gameObject.SetActive(false);
+            lastAttemptFailed = false;
+        }
+    }
+
     private void CreatePopupUI()
     {
         GameObject canvasObject = new GameObject("SF Popup Canvas");
@@ -586,6 +630,9 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         scaler.matchWidthOrHeight = 0.5f;
 
         canvasObject.AddComponent<GraphicRaycaster>();
+
+        // Create failure indicator before the overlay
+        CreateFailureIndicator(canvas);
 
         overlayRoot = new GameObject("Popup Overlay");
         overlayRoot.transform.SetParent(canvasObject.transform, false);
@@ -641,7 +688,6 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
         qInput = CreateFieldRow(panel.transform, "q (applied pressure)", "1000");
         cuInput = CreateFieldRow(panel.transform, "Cu (undrained shear)", "40");
         scInput = CreateFieldRow(panel.transform, "Sc (shape factor)", "1.3");
-        quInput = CreateFieldRow(panel.transform, "Qu (ultimate capacity)", "500");
 
         errorText = CreateLabel(
             panel.transform,
@@ -676,6 +722,38 @@ public class InteractiveShallowFoundationPopup : MonoBehaviour
             new Color(0.34f, 0.34f, 0.34f, 1f),
             Color.white);
         cancelButton.onClick.AddListener(ClosePopup);
+    }
+
+    private void CreateFailureIndicator(Canvas canvas)
+    {
+        GameObject indicatorObject = new GameObject("Failure Indicator");
+        indicatorObject.transform.SetParent(canvas.transform, false);
+
+        failureIndicator = indicatorObject.AddComponent<Image>();
+        failureIndicator.color = new Color(0.9f, 0.2f, 0.2f, 0.9f);
+
+        RectTransform indicatorRect = indicatorObject.GetComponent<RectTransform>();
+        indicatorRect.anchorMin = new Vector2(1f, 1f);
+        indicatorRect.anchorMax = new Vector2(1f, 1f);
+        indicatorRect.pivot = new Vector2(1f, 1f);
+        indicatorRect.anchoredPosition = new Vector2(-20f, -20f);
+        indicatorRect.sizeDelta = new Vector2(60f, 60f);
+
+        GameObject textObject = new GameObject("Exclamation Text");
+        textObject.transform.SetParent(indicatorObject.transform, false);
+
+        Text exclamationText = textObject.AddComponent<Text>();
+        exclamationText.text = "!";
+        exclamationText.font = GetDefaultFont();
+        exclamationText.fontSize = 48;
+        exclamationText.fontStyle = FontStyle.Bold;
+        exclamationText.alignment = TextAnchor.MiddleCenter;
+        exclamationText.color = Color.white;
+
+        RectTransform textRect = textObject.GetComponent<RectTransform>();
+        Stretch(textRect);
+
+        indicatorObject.SetActive(false);
     }
 
     private InputField CreateFieldRow(Transform parent, string labelText, string placeholder)
