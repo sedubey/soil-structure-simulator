@@ -17,36 +17,77 @@ public class FoundationController : MonoBehaviour
     public double Cu = 40.0;
     public double Sc = 1.3;
 
-    public double Qu = 500;   // Set high for failure testing
+    public double Qu = 500;
 
     [Header("Movement")]
     public float moveSpeed = 2f;
     public float scaleSpeed = 2f;
 
+    private Vector3 foundationStartPos;
+    private Vector3 sandStartPos;
+    private Vector3 sandStartScale;
+
     void Start()
     {
         Debug.Log("Controller running");
 
-        // Hide Scenario specific sand
+        // Save starting values so reset works later
+        foundationStartPos = Foundation.transform.position;
+        sandStartPos = Sand_M.transform.position;
+        sandStartScale = Sand_M.transform.localScale;
+
         Scenario_1.SetActive(false);
+    }
 
-        if (q > Qu) // Failure
+    public void RunScenario(int mode)
+    {
+        ResetVisuals();
+
+        if (mode == 0) // Pass
         {
-            // Scale and move middle sand
-            StartCoroutine(MoveScale(Sand_M.transform, Sand_M.transform.position += new Vector3(0f, -0.1f, 0f), Sand_M.transform.localScale += new Vector3(0f, -0.2f, 0f)));
+            q = 300;
+            Qu = 500;
+        }
+        else if (mode == 1) // Fail
+        {
+            q = 1000;
+            Qu = 500;
+        }
+        else if (mode == 2) // Interactive
+        {
+            // UI entered module, your stuff (currently thios part just uses the hardcoded numbers
+        }
 
-            // Move foundation down
-            StartCoroutine(Move(Foundation.transform, Foundation.transform.position + new Vector3(0f, -0.3f, 0f)));
+        if (q > Qu)
+        {
+            // Calculate targets
+            Vector3 sandTargetPos = sandStartPos + new Vector3(0f, -0.1f, 0f);
+            Vector3 sandTargetScale = sandStartScale + new Vector3(0f, -0.2f, 0f);
+            Vector3 foundationTargetPos = foundationStartPos + new Vector3(0f, -0.3f, 0f);
 
-            // Shows the scenario specific sand
             Scenario_1.SetActive(true);
+
+            StartCoroutine(MoveScale(Sand_M.transform, sandTargetPos, sandTargetScale));
+            StartCoroutine(Move(Foundation.transform, foundationTargetPos));
         }
 
         Debug.Log("Qu = " + Qu);
         Debug.Log("q = " + q);
     }
 
-    IEnumerator Move(Transform obj, Vector3 target)     // Moves objects with basic animation
+    // Resets to original location so you can run it multiple times
+    public void ResetVisuals()
+    {
+        StopAllCoroutines();
+
+        Foundation.transform.position = foundationStartPos;
+        Sand_M.transform.position = sandStartPos;
+        Sand_M.transform.localScale = sandStartScale;
+
+        Scenario_1.SetActive(false);
+    }
+
+    IEnumerator Move(Transform obj, Vector3 target)
     {
         while (Vector3.Distance(obj.position, target) > 0.01f)
         {
@@ -57,7 +98,7 @@ public class FoundationController : MonoBehaviour
         obj.position = target;
     }
 
-    IEnumerator MoveScale(Transform obj, Vector3 targetPos, Vector3 targetScale)     // Moves objects with basic animation
+    IEnumerator MoveScale(Transform obj, Vector3 targetPos, Vector3 targetScale)
     {
         while (Vector3.Distance(obj.position, targetPos) > 0.01f || Vector3.Distance(obj.localScale, targetScale) > 0.01f)
         {
@@ -69,5 +110,4 @@ public class FoundationController : MonoBehaviour
         obj.position = targetPos;
         obj.localScale = targetScale;
     }
-
 }
