@@ -34,11 +34,11 @@ This project is released under the **MIT License** (see LICENSE file).
 
 ## 🎮 Interaction Guide
 
-### Module 1 – Hallway Button
+### Module 1 – Retaining Wall
 - Go to the **end of the hallway**.
 - Press the button **once for each step** of the building sequence to play.
 
-### Module 2 – Central Testing Area
+### Module 2 – Shallow Foundation
 Located in the **center** of the scene.
 
 | Screen Position | Behavior |
