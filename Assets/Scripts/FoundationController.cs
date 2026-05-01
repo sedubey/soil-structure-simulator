@@ -173,7 +173,7 @@ public class FoundationController : MonoBehaviour
         else
             {
             Debug.Log("Foundation is STABLE");
-            InteractiveShallowFoundationPopup.NotifyCalculationPassed(); // Add this line
+            InteractiveShallowFoundationPopup.NotifyCalculationPassed();
         }
     }
 
